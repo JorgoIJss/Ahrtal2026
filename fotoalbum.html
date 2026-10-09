@@ -46,7 +46,7 @@ let images=[],active='alles',albumList=[];
 async function loadAlbums(){const r=await fetch(API+'/api/albums',{cache:'no-store'});if(!r.ok)throw Error('Albums niet bereikbaar');albumList=await r.json();}
 function title(s){return s.replace(/[-_]/g,' ').replace(/\b\w/g,c=>c.toUpperCase())}
 function render(){
-const groups=['alles',...albumList.map(a=>a.id)];filters.replaceChildren();
+const groups=['alles',...new Set([...albumList.map(a=>a.id),...images.map(p=>p.album)])];filters.replaceChildren();
 groups.forEach(g=>{const b=document.createElement('button');b.type='button';b.textContent=g==='alles'?'Alle foto’s':(albumList.find(a=>a.id===g)?.title||title(g));b.setAttribute('aria-pressed',String(active===g));b.addEventListener('click',()=>{active=g;render()});filters.appendChild(b)});
 grid.replaceChildren();
 const items=images.filter(x=>active==='alles'||x.album===active);
@@ -54,9 +54,24 @@ if(!items.length){const p=document.createElement('div');p.className='bpc-memory-
 items.forEach(photo=>{const b=document.createElement('button');b.type='button';b.className='bpc-memory-item';const im=document.createElement('img');im.src=API+photo.url;im.alt='BPC '+title(photo.album);im.loading='lazy';const name=document.createElement('span');name.textContent=(albumList.find(a=>a.id===photo.album)?.title||title(photo.album))+' · '+new Date(photo.createdAt).toLocaleDateString('nl-NL');b.append(im,name);b.addEventListener('click',()=>{large.src=im.src;caption.textContent=name.textContent;if(typeof dlg.showModal==='function')dlg.showModal();else window.open(im.src,'_blank','noopener')});grid.appendChild(b)})
 }
 async function load(){
-try{await loadAlbums();const r=await fetch(API+'/api/photos',{cache:'no-store'});if(!r.ok)throw Error('foto-API niet bereikbaar');images=await r.json();render()}
-catch(e){grid.replaceChildren();const d=document.createElement('div');d.className='bpc-memory-empty';d.textContent='De fotoalbums kunnen momenteel niet worden geladen. Controleer of de BPC-fotoserver bereikbaar is.';grid.appendChild(d)}
+try{
+ const r=await fetch(API+'/api/photos',{cache:'no-store'});
+ if(!r.ok)throw Error('Foto-API: HTTP '+r.status);
+ const data=await r.json();
+ if(!Array.isArray(data))throw Error('Onverwacht antwoord van de fotoserver');
+ images=data;
+ albumList=[...new Set(images.map(p=>p.album))].map(id=>({id,title:title(id)}));
+ render();
+ // Albumtitels zijn optioneel: een fout bij /api/albums mag foto's nooit blokkeren.
+ try{await loadAlbums();render()}catch(e){console.warn('Albumtitels niet geladen; foto's blijven zichtbaar',e)}
+}catch(e){
+ grid.replaceChildren();
+ const d=document.createElement('div');d.className='bpc-memory-empty';
+ d.textContent='Foto’s konden niet worden geladen: '+e.message+'. Controleer de fotoserver en vernieuw de pagina.';
+ grid.appendChild(d);
 }
+}
+
 document.getElementById('bpc-memory-close').addEventListener('click',()=>dlg.close());
 
 load();
