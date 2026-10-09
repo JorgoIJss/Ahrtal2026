@@ -50,7 +50,7 @@ const groups=['alles',...new Set([...albumList.map(a=>a.id),...images.map(p=>p.a
 groups.forEach(g=>{const b=document.createElement('button');b.type='button';b.textContent=g==='alles'?'Alle foto’s':(albumList.find(a=>a.id===g)?.title||title(g));b.setAttribute('aria-pressed',String(active===g));b.addEventListener('click',()=>{active=g;render()});filters.appendChild(b)});
 grid.replaceChildren();
 const items=images.filter(x=>active==='alles'||x.album===active);
-if(!items.length){const p=document.createElement('div');p.className='bpc-memory-empty';p.textContent='Er zijn nog geen BPC-herinneringen toegevoegd. Je kunt foto's toevoegen via Foto’s beheren.';grid.appendChild(p);return}
+if(!items.length){const p=document.createElement('div');p.className='bpc-memory-empty';p.textContent="Er zijn nog geen BPC-herinneringen toegevoegd. Je kunt foto's toevoegen via Foto’s beheren.";grid.appendChild(p);return}
 items.forEach(photo=>{const b=document.createElement('button');b.type='button';b.className='bpc-memory-item';const im=document.createElement('img');im.src=API+photo.url;im.alt='BPC '+title(photo.album);im.loading='lazy';const name=document.createElement('span');name.textContent=(albumList.find(a=>a.id===photo.album)?.title||title(photo.album))+' · '+new Date(photo.createdAt).toLocaleDateString('nl-NL');b.append(im,name);b.addEventListener('click',()=>{large.src=im.src;caption.textContent=name.textContent;if(typeof dlg.showModal==='function')dlg.showModal();else window.open(im.src,'_blank','noopener')});grid.appendChild(b)})
 }
 async function load(){
