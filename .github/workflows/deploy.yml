@@ -1,0 +1,39 @@
+
+name: Deploy BPC to Coolify
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bpc-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, Linux, X64, bpc-deploy]
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger Coolify deployment
+        env:
+          COOLIFY_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          test -n "$COOLIFY_TOKEN"
+
+          curl --fail-with-body --show-error \
+            --retry 2 \
+            --max-time 60 \
+            -X GET \
+            -H "Authorization: Bearer $COOLIFY_TOKEN" \
+            -H "Accept: application/json" \
+            "http://127.0.0.1:8000/api/v1/deploy?uuid=z0kp3vui4houqtn37bol1wl9&force=false"
+
+          echo "Coolify deployment aangevraagd."
