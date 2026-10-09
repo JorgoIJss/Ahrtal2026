@@ -16,12 +16,16 @@ if (PASSWORD.length < 16 || !ORIGIN.startsWith('https://')) {
   console.error('Set UPLOAD_PASSWORD (min 16 chars) and CORS_ORIGIN (https://...) before starting');
   process.exit(1);
 }
-const albums = new Map([
+const defaultAlbums = new Map([
   ['ahrtal-2026','Ahrtal 2026'],
   ['selectiedag-2026','Selectiedag 2026'],
   ['ardennen-2027','Ardennen 2027'],
   ['overig','Overige herinneringen'],
 ]);
+const ALBUM_FILE=path.join(DATA_DIR,'albums.json');
+let albums=new Map(defaultAlbums);
+async function saveAlbums(){const temp=ALBUM_FILE+'.tmp-'+randomUUID();await fs.writeFile(temp,JSON.stringify([...albums]),{mode:0o600});await fs.rename(temp,ALBUM_FILE)}
+async function loadAlbums(){try{const stored=JSON.parse(await fs.readFile(ALBUM_FILE,'utf8'));if(Array.isArray(stored))for(const pair of stored){if(Array.isArray(pair)&&/^[a-z0-9-]{2,60}$/.test(pair[0])&&typeof pair[1]==='string'&&pair[1].length<=80)albums.set(pair[0],pair[1])}}catch(e){if(e.code!=='ENOENT')console.error('Album index could not be loaded',e)}}
 const app = express();
 app.disable('x-powered-by');
 app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));
@@ -49,6 +53,7 @@ function requirePassword(req,res,next){
 }
 app.get('/health',(req,res)=>res.json({ok:true}));
 app.get('/api/albums',(req,res)=>res.json([...albums].map(([id,title])=>({id,title}))));
+app.post('/api/albums',uploadLimiter,requirePassword,express.json({limit:'4kb'}),async(req,res,next)=>{try{const title=String(req.body?.title||'').trim().replace(/\\s+/g,' ');if(title.length<3||title.length>80)return res.status(400).json({error:'Gebruik een albumnaam van 3 tot 80 tekens'});const slug=title.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);if(slug.length<2)return res.status(400).json({error:'Ongeldige albumnaam'});if(albums.has(slug))return res.status(409).json({error:'Dit album bestaat al'});if(albums.size>=150)return res.status(400).json({error:'Maximum aantal albums bereikt'});albums.set(slug,title);try{await saveAlbums();await fs.mkdir(path.join(DATA_DIR,slug),{recursive:true})}catch(e){albums.delete(slug);throw e}res.status(201).json({id:slug,title})}catch(e){next(e)}});
 app.get('/api/photos',async(req,res,next)=>{
   try{
     const photos=[];
@@ -89,4 +94,5 @@ app.post('/api/photos',uploadLimiter,requirePassword,upload.single('photo'),asyn
 });
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Er ging iets mis bij de fotoverwerking'})});
 await fs.mkdir(DATA_DIR,{recursive:true});
+await loadAlbums();
 app.listen(PORT,'0.0.0.0',()=>console.log('BPC photo service listening on '+PORT));
