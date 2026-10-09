@@ -39,8 +39,8 @@ app.use((req,res,next)=>{
   if(req.method==='OPTIONS')return res.sendStatus(req.headers.origin===ORIGIN?204:403);
   next();
 });
-app.use('/api/',rateLimit({windowMs:15*60*1000,limit:100,standardHeaders:'draft-7',legacyHeaders:false}));
-const uploadLimiter=rateLimit({windowMs:15*60*1000,limit:12,standardHeaders:'draft-7',legacyHeaders:false});
+app.use('/api/',rateLimit({windowMs:15*60*1000,limit:250,standardHeaders:'draft-7',legacyHeaders:false}));
+const uploadLimiter=rateLimit({windowMs:15*60*1000,limit:150,standardHeaders:'draft-7',legacyHeaders:false});
 const upload = multer({storage:multer.memoryStorage(),limits:{fileSize:MAX_BYTES,files:1,fields:2,parts:3}});
 function authorized(value){
   if(typeof value!=='string'||Buffer.byteLength(value)>512)return false;
