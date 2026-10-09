@@ -57,4 +57,4 @@ target.innerHTML='<strong>'+Math.round(c.temperature_2m)+'°C</strong> · wind '
 }catch(e){target.innerHTML='Live weer tijdelijk niet beschikbaar. <a href="https://www.dwd.de/" target="_blank" rel="noopener">Bekijk DWD</a>.';}
 }update();setInterval(update,1800000);
 })();
-</script></body></html>
+</script><script>document.querySelectorAll('#bpc-side .bpc-side-group summary').forEach(s=>s.addEventListener('click',e=>{if(e.target.closest('.bpc-chevron,.bpc-event-main-link'))return;const a=s.querySelector('.bpc-event-main-link');if(a){e.preventDefault();location.href=a.href}}));</script></body></html>
