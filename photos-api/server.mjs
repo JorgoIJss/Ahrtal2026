@@ -33,7 +33,7 @@ app.use((req,res,next)=>{
   res.set('Vary','Origin');
   if(req.headers.origin===ORIGIN){
     res.set('Access-Control-Allow-Origin',ORIGIN);
-    res.set('Access-Control-Allow-Methods','GET, POST, OPTIONS');
+    res.set('Access-Control-Allow-Methods','GET, POST, DELETE, OPTIONS');
     res.set('Access-Control-Allow-Headers','Content-Type, X-Upload-Password');
   }
   if(req.method==='OPTIONS')return res.sendStatus(req.headers.origin===ORIGIN?204:403);
@@ -70,6 +70,7 @@ app.get('/api/photos',async(req,res,next)=>{
     res.set('Cache-Control','no-store').json(photos);
   }catch(e){next(e)}
 });
+app.delete('/api/photos/:album/:filename',uploadLimiter,requirePassword,async(req,res,next)=>{try{const {album,filename}=req.params;if(!albums.has(album)||!/^[0-9]{13}-[0-9a-f-]{36}\.webp$/.test(filename))return res.status(400).json({error:'Ongeldige foto'});const filepath=path.join(DATA_DIR,album,filename);try{await fs.unlink(filepath)}catch(e){if(e.code==='ENOENT')return res.status(404).json({error:'Foto niet gevonden'});throw e}res.set('Cache-Control','no-store').json({ok:true})}catch(e){next(e)}});
 app.use('/images',express.static(DATA_DIR,{dotfiles:'deny',fallthrough:false,maxAge:'7d',immutable:true,setHeaders(res){res.set('X-Content-Type-Options','nosniff')}}));
 app.post('/api/photos',uploadLimiter,requirePassword,upload.single('photo'),async(req,res,next)=>{
   try{
