@@ -63,7 +63,7 @@ try{
  albumList=[...new Set(images.map(p=>p.album))].map(id=>({id,title:title(id)}));
  render();
  // Albumtitels zijn optioneel: een fout bij /api/albums mag foto's nooit blokkeren.
- try{await loadAlbums();render()}catch(e){console.warn('Albumtitels niet geladen; foto's blijven zichtbaar',e)}
+ try{await loadAlbums();render()}catch(e){console.warn("Albumtitels niet geladen; foto's blijven zichtbaar",e)}
 }catch(e){
  grid.replaceChildren();
  const d=document.createElement('div');d.className='bpc-memory-empty';
