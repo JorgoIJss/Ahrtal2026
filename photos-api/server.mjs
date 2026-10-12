@@ -31,7 +31,7 @@ let photoMeta={captions:{},covers:{}};
 async function loadPhotoMeta(){try{const value=JSON.parse(await fs.readFile(META_FILE,'utf8'));if(value&&typeof value==='object')photoMeta={captions:value.captions||{},covers:value.covers||{}}}catch(e){if(e.code!=='ENOENT')console.error('Photo metadata load failed',e)}}
 async function savePhotoMeta(){const tmp=META_FILE+'.tmp-'+randomUUID();await fs.writeFile(tmp,JSON.stringify(photoMeta),{mode:0o600});await fs.rename(tmp,META_FILE)}
 function photoKey(album,filename){return album+'/'+filename}
-function validPhoto(album,filename){return albums.has(album)&&/^\d{13}-[0-9a-f-]{36}\.webp$/.test(filename)}
+function validPhoto(album,filename){return albums.has(album)&&typeof filename==='string'&&filename.length>0&&filename.length<=255&&filename.endsWith('.webp')&&filename===path.basename(filename)&&!filename.includes('..')&&/^[a-zA-Z0-9._-]+$/.test(filename)}
 const app = express();
 app.disable('x-powered-by');
 app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));
