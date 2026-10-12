@@ -39,7 +39,7 @@ app.use((req,res,next)=>{
   res.set('Vary','Origin');
   if(req.headers.origin===ORIGIN){
     res.set('Access-Control-Allow-Origin',ORIGIN);
-    res.set('Access-Control-Allow-Methods','GET, POST, DELETE, OPTIONS');
+    res.set('Access-Control-Allow-Methods','GET, POST, PUT, DELETE, OPTIONS');
     res.set('Access-Control-Allow-Headers','Content-Type, X-Upload-Password');
   }
   if(req.method==='OPTIONS')return res.sendStatus(req.headers.origin===ORIGIN?204:403);
