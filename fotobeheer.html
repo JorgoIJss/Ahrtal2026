@@ -63,16 +63,28 @@ const createForm=document.getElementById('bpc-create-album');createForm.addEvent
 const progress=document.getElementById('bpc-bulk-progress'),counter=document.getElementById('bpc-bulk-count');
 files.addEventListener('change',()=>{const selected=[...files.files];counter.textContent=selected.length?selected.length+' foto’s geselecteerd voor album: '+album.selectedOptions[0].textContent:'Nog geen foto’s geselecteerd.'});
 album.addEventListener('change',()=>{if(files.files.length)counter.textContent=files.files.length+' foto’s geselecteerd voor album: '+album.selectedOptions[0].textContent});
+async function preparePhoto(file){
+ if(!file.type.startsWith('image/')||file.type==='image/heic'||file.type==='image/heif'||file.type==='image/avif')return file;
+ try{
+  const bitmap=await createImageBitmap(file);const scale=Math.min(1,2400/Math.max(bitmap.width,bitmap.height));
+  const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));
+  canvas.getContext('2d').drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close();
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.83));
+  if(blob&&blob.size<file.size)return new File([blob],file.name.replace(/\.[^.]+$/, '')+'.jpg',{type:'image/jpeg'});
+ }catch(e){console.warn('Browser compression skipped',file.name,e)}
+ return file;
+}
 form.addEventListener('submit',async e=>{
 e.preventDefault();const list=[...files.files];if(!list.length)return;
 if(list.length>100){status.textContent='Selecteer maximaal 100 foto’s per uploadronde.';return}
-if(list.some(f=>f.size>15*1024*1024)){status.textContent='Een of meer foto’s zijn groter dan 15 MB.';return}
+
 const chosenAlbum=album.value,chosenPassword=password.value;submit.disabled=true;files.disabled=true;album.disabled=true;
 progress.style.display='block';progress.max=list.length;progress.value=0;let completed=0,failed=0;const errors=[];
 for(const file of list){
 status.textContent='Bezig: '+(completed+failed+1)+' / '+list.length+' · '+completed+' opgeslagen';
 try{
- const body=new FormData();body.append('album',chosenAlbum);body.append('photo',file,file.name);
+ const prepared=await preparePhoto(file);if(prepared.size>15*1024*1024)throw Error('Foto blijft groter dan 15 MB na verkleinen');
+ const body=new FormData();body.append('album',chosenAlbum);body.append('photo',prepared,prepared.name);
  const r=await fetch(API+'/api/photos',{method:'POST',headers:{'X-Upload-Password':chosenPassword},body});
  const result=await r.json().catch(()=>({}));
  if(!r.ok)throw Error(result.error||'HTTP '+r.status);
@@ -81,7 +93,7 @@ try{
 progress.value=completed+failed;
 }
 counter.textContent=completed+' van '+list.length+' foto’s opgeslagen in '+album.selectedOptions[0].textContent+'.';
-status.textContent=failed?completed+' opgeslagen, '+failed+' mislukt. '+errors.slice(0,3).join(' | '):'✓ Alle '+completed+' foto’s opgeslagen op de BPC-server!';
+status.textContent=failed?completed+' opgeslagen, '+failed+' mislukt. '+errors.slice(0,8).join(' | '):'✓ Alle '+completed+' foto’s opgeslagen op de BPC-server!';
 if(completed===list.length){files.value='';password.value=''}
 files.disabled=false;album.disabled=false;submit.disabled=false;
 try{await load()}catch(err){status.textContent+=' Fotooverzicht kon niet worden vernieuwd.'}
