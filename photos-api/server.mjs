@@ -26,6 +26,12 @@ const ALBUM_FILE=path.join(DATA_DIR,'albums.json');
 let albums=new Map(defaultAlbums);
 async function saveAlbums(){const temp=ALBUM_FILE+'.tmp-'+randomUUID();await fs.writeFile(temp,JSON.stringify([...albums]),{mode:0o600});await fs.rename(temp,ALBUM_FILE)}
 async function loadAlbums(){try{const stored=JSON.parse(await fs.readFile(ALBUM_FILE,'utf8'));if(Array.isArray(stored))for(const pair of stored){if(Array.isArray(pair)&&/^[a-z0-9-]{2,60}$/.test(pair[0])&&typeof pair[1]==='string'&&pair[1].length<=80)albums.set(pair[0],pair[1])}}catch(e){if(e.code!=='ENOENT')console.error('Album index could not be loaded',e)}}
+const META_FILE=path.join(DATA_DIR,'photo-metadata.json');
+let photoMeta={captions:{},covers:{}};
+async function loadPhotoMeta(){try{const value=JSON.parse(await fs.readFile(META_FILE,'utf8'));if(value&&typeof value==='object')photoMeta={captions:value.captions||{},covers:value.covers||{}}}catch(e){if(e.code!=='ENOENT')console.error('Photo metadata load failed',e)}}
+async function savePhotoMeta(){const tmp=META_FILE+'.tmp-'+randomUUID();await fs.writeFile(tmp,JSON.stringify(photoMeta),{mode:0o600});await fs.rename(tmp,META_FILE)}
+function photoKey(album,filename){return album+'/'+filename}
+function validPhoto(album,filename){return albums.has(album)&&/^\\d{13}-[0-9a-f-]{36}\\.webp$/.test(filename)}
 const app = express();
 app.disable('x-powered-by');
 app.use(helmet({crossOriginResourcePolicy:{policy:'cross-origin'}}));
@@ -52,7 +58,7 @@ function requirePassword(req,res,next){
   next();
 }
 app.get('/health',(req,res)=>res.json({ok:true}));
-app.get('/api/albums',(req,res)=>res.json([...albums].map(([id,title])=>({id,title}))));
+app.get('/api/albums',(req,res)=>res.json([...albums].map(([id,title])=>({id,title,cover:photoMeta.covers[id]||null}))));
 app.post('/api/albums',uploadLimiter,requirePassword,express.json({limit:'4kb'}),async(req,res,next)=>{try{const title=String(req.body?.title||'').trim().replace(/\\s+/g,' ');if(title.length<3||title.length>80)return res.status(400).json({error:'Gebruik een albumnaam van 3 tot 80 tekens'});const slug=title.toLowerCase().normalize('NFKD').replace(/[\\u0300-\\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60);if(slug.length<2)return res.status(400).json({error:'Ongeldige albumnaam'});if(albums.has(slug))return res.status(409).json({error:'Dit album bestaat al'});if(albums.size>=150)return res.status(400).json({error:'Maximum aantal albums bereikt'});albums.set(slug,title);try{await saveAlbums();await fs.mkdir(path.join(DATA_DIR,slug),{recursive:true})}catch(e){albums.delete(slug);throw e}res.status(201).json({id:slug,title})}catch(e){next(e)}});
 app.get('/api/photos',async(req,res,next)=>{
   try{
@@ -63,14 +69,16 @@ app.get('/api/photos',async(req,res,next)=>{
       for(const item of items){
         if(!item.isFile()||!/^\d{13}-[0-9a-f-]{36}\.webp$/.test(item.name))continue;
         const stat=await fs.stat(path.join(dir,item.name));
-        photos.push({album,title,url:'/images/'+album+'/'+item.name,createdAt:stat.mtime.toISOString()});
+        photos.push({album,title,url:'/images/'+album+'/'+item.name,createdAt:stat.mtime.toISOString(),caption:photoMeta.captions[photoKey(album,item.name)]||''});
       }
     }
     photos.sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
     res.set('Cache-Control','no-store').json(photos);
   }catch(e){next(e)}
 });
-app.delete('/api/photos/:album/:filename',uploadLimiter,requirePassword,async(req,res,next)=>{try{const {album,filename}=req.params;if(!albums.has(album)||!/^[0-9]{13}-[0-9a-f-]{36}\.webp$/.test(filename))return res.status(400).json({error:'Ongeldige foto'});const filepath=path.join(DATA_DIR,album,filename);try{await fs.unlink(filepath)}catch(e){if(e.code==='ENOENT')return res.status(404).json({error:'Foto niet gevonden'});throw e}res.set('Cache-Control','no-store').json({ok:true})}catch(e){next(e)}});
+app.put('/api/photos/:album/:filename/caption',uploadLimiter,requirePassword,express.json({limit:'4kb'}),async(req,res,next)=>{try{const {album,filename}=req.params;if(!validPhoto(album,filename))return res.status(400).json({error:'Ongeldige foto'});try{await fs.access(path.join(DATA_DIR,album,filename))}catch{return res.status(404).json({error:'Foto niet gevonden'})}if(typeof req.body?.caption!=='string'||req.body.caption.length>300)return res.status(400).json({error:'Onderschrift maximaal 300 tekens'});const key=photoKey(album,filename);const old=photoMeta.captions[key];const value=req.body.caption.trim();if(value)photoMeta.captions[key]=value;else delete photoMeta.captions[key];try{await savePhotoMeta()}catch(e){if(old===undefined)delete photoMeta.captions[key];else photoMeta.captions[key]=old;throw e}res.json({ok:true,caption:value})}catch(e){next(e)}});
+app.put('/api/albums/:album/cover',uploadLimiter,requirePassword,express.json({limit:'4kb'}),async(req,res,next)=>{try{const album=req.params.album,filename=req.body?.filename;if(!validPhoto(album,filename))return res.status(400).json({error:'Ongeldige albumcover'});try{await fs.access(path.join(DATA_DIR,album,filename))}catch{return res.status(404).json({error:'Foto niet gevonden'})}const old=photoMeta.covers[album];photoMeta.covers[album]='/images/'+album+'/'+filename;try{await savePhotoMeta()}catch(e){if(old===undefined)delete photoMeta.covers[album];else photoMeta.covers[album]=old;throw e}res.json({ok:true,cover:photoMeta.covers[album]})}catch(e){next(e)}});
+app.delete('/api/photos/:album/:filename',uploadLimiter,requirePassword,async(req,res,next)=>{try{const {album,filename}=req.params;if(!albums.has(album)||!/^[0-9]{13}-[0-9a-f-]{36}\.webp$/.test(filename))return res.status(400).json({error:'Ongeldige foto'});const filepath=path.join(DATA_DIR,album,filename);try{await fs.unlink(filepath)}catch(e){if(e.code==='ENOENT')return res.status(404).json({error:'Foto niet gevonden'});throw e}delete photoMeta.captions[photoKey(album,filename)];if(photoMeta.covers[album]==='/images/'+album+'/'+filename)delete photoMeta.covers[album];await savePhotoMeta();res.set('Cache-Control','no-store').json({ok:true})}catch(e){next(e)}});
 app.use('/images',express.static(DATA_DIR,{dotfiles:'deny',fallthrough:false,maxAge:'7d',immutable:true,setHeaders(res){res.set('X-Content-Type-Options','nosniff')}}));
 app.post('/api/photos',uploadLimiter,requirePassword,upload.single('photo'),async(req,res,next)=>{
   try{
@@ -96,4 +104,5 @@ app.post('/api/photos',uploadLimiter,requirePassword,upload.single('photo'),asyn
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:'Er ging iets mis bij de fotoverwerking'})});
 await fs.mkdir(DATA_DIR,{recursive:true});
 await loadAlbums();
+await loadPhotoMeta();
 app.listen(PORT,'0.0.0.0',()=>console.log('BPC photo service listening on '+PORT));
