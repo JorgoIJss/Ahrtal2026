@@ -12,8 +12,8 @@ const DATA_DIR = path.resolve(process.env.DATA_DIR || '/data');
 const PASSWORD = process.env.UPLOAD_PASSWORD || '';
 const ORIGIN = (process.env.CORS_ORIGIN || '').replace(/\/$/,'');
 const MAX_BYTES = 15 * 1024 * 1024;
-if (PASSWORD.length < 16 || !ORIGIN.startsWith('https://')) {
-  console.error('Set UPLOAD_PASSWORD (min 16 chars) and CORS_ORIGIN (https://...) before starting');
+if (PASSWORD.length < 3 || !ORIGIN.startsWith('https://')) {
+  console.error('Set UPLOAD_PASSWORD (min 3 chars) and CORS_ORIGIN (https://...) before starting');
   process.exit(1);
 }
 const defaultAlbums = new Map([
