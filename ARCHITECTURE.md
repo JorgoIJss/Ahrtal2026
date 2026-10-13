@@ -4,7 +4,7 @@ Status: gebaseerd op inspectie van de GitHub-repository `JorgoIJss/Ahrtal2026` o
 
 ## 1. Doel en grenzen
 
-BPC on Tour is een Nederlandstalige website voor clubuitjes, reisagenda, praktische informatie, stemlinks en fotoherinneringen. De site bevat statische pagina's met inline CSS en JavaScript en gebruikt een afzonderlijke HTTP-API voor fotoalbums en foto's.
+BPC on Tour is een Nederlandstalige website voor clubuitjes, reisagenda, praktische informatie, stemlinks en fotoherinneringen. De site bevat statische pagina's met gedeelde CSS-/JavaScript-assets en paginaspecifieke inline code. Voor fotoalbums en foto's gebruikt zij een afzonderlijke HTTP-API.
 
 ## 2. Logische architectuur
 
@@ -34,9 +34,9 @@ Browser
 
 ## 3. Frontendstructuur
 
-- **Technologie:** statische HTML, CSS in `<style>`-tags, browser-JavaScript in `<script>`-tags; Google Fonts (DM Sans, Playfair Display).
-- **Navigatie:** pagina's linken rechtstreeks naar andere `.html`-bestanden. Zijmenu en scripts komen op meerdere pagina's terug; er is geen in deze inspectie aangetroffen centrale templating- of buildpipeline.
-- **Reislevenscyclus:** datums voor Ahrtal (11-10-2026), selectiedag (14-11-2026) en Ardennen (11-04-2027) zitten in een terugkerend `bpc-navigation-history-sync`-script. Aan de hand van de lokale datum in `Europe/Amsterdam` verschuiven afgelopen reizen uit de komende agenda naar historie, uitsluitend in de browserweergave.
+- **Technologie:** statische HTML, gedeelde bestanden in `assets/css/` en `assets/js/`, plus paginaspecifieke `<style>`- en `<script>`-blokken; Google Fonts (DM Sans, Playfair Display).
+- **Navigatie:** pagina's linken rechtstreeks naar andere `.html`-bestanden. De styling en het gedrag van het zijmenu zijn gedeeld, maar de menu-items staan nog in de HTML van elke pagina; er is geen centrale templating- of buildpipeline vastgesteld.
+- **Reislevenscyclus:** datums voor Ahrtal (11-10-2026), selectiedag (14-11-2026) en Ardennen (11-04-2027) staan in `assets/js/trip-history.js`. Aan de hand van de lokale datum in `Europe/Amsterdam` verschuiven afgelopen reizen uit de komende agenda naar historie, uitsluitend in de browserweergave.
 - **Historie:** `geschiedenis.html` haalt album- en fotodata op uit de fotoservice.
 - **Fotoalbum:** `fotoalbum.html` vraagt albums/foto's op, ondersteunt albumselectie, albumcovers en fullscreen foto bekijken, navigeren en downloaden.
 - **Fotobeheer:** `fotobeheer.html` biedt albumcreatie, upload van meerdere afbeeldingen, verwijdering, captions en albumcover-instelling. De frontend ondersteunt maximaal 100 bestanden per selectie en controleert 15 MB per afbeelding; serverlimieten dienen afzonderlijk te worden gecontroleerd.
@@ -64,9 +64,9 @@ De frontend bevat een vaste cross-origin URL naar de foto-API. Volgens de fronte
 
 ## 6. Architectuurrisico's / aandachtspunten
 
-1. **Duplicatie:** uitgebreide inline styles en navigatiescripts staan op verschillende pagina's. Een simpele wijziging kan onbedoeld inconsistent worden. Eerst per pagina vergelijken; daarna pas gefaseerd centraliseren.
+1. **Duplicatie:** de algemene stijlen en navigatiescripts zijn gedeeld, maar menu-items en paginaspecifieke inline code staan nog op meerdere pagina's. Een wijziging aan een gedeelde asset kan alle zeven pagina's raken.
 2. **Grote bestanden:** met name `ahrtal.html` is zeer groot; wijzigingen klein houden en geen massale herschrijving zonder noodzaak.
-3. **Gekopieerde datums:** het reisregister is statisch en op meerdere pagina's opgenomen. Nieuwe reizen vereisen consistente wijzigingen, inclusief geschiedenis.
+3. **Statische reislinks:** de datumlogica is centraal, maar een nieuwe reis vereist ook aanpassingen aan HTML-menu-items, agenda en detailpagina's.
 4. **API-koppeling:** hardcoded API-host; wijzigingen aan host/CORS/TLS kunnen fotoalbums op meerdere pagina's verbreken.
 5. **Authenticatie/privacy:** een gedeeld wachtwoord voor schrijfacties; geen geheimen in Git, geen logging van wachtwoorden. Publieke foto's behoeven toestemming en verwijdermogelijkheid.
 6. **Ontbrekende geautomatiseerde tests:** in de onderzochte rootpaden geen package-, Docker- of testmanifest gevonden; beschouw een testsuite niet als bestaand.
@@ -130,3 +130,18 @@ De extractie is **gedragsbehoudend** ontworpen: de originele CSS-regels en JavaS
 Een daadwerkelijke browser-/visuele regressietest en productie-smoketest zijn **niet voltooid**: de gepubliceerde site en foto-API zijn vanuit de beschikbare webomgeving niet toegankelijk. Daarmee is niet vastgesteld dat de statische host de nieuwe paden onder `/assets/` correct serveert, of dat de automatische Coolify-deployment al is bijgewerkt. Controleer in een echte browser de netwerkstatus van alle vier assets (HTTP 200), mobiele navigatie, geschiedenis en fotobeheer voordat deze release als volledig gevalideerd geldt.
 
 Bij een server die HTML wel deployt maar nieuwe `assets/`-bestanden niet publiceert, vallen styling en navigatie weg. Controleer daarom ook het publicatiemechanisme en pas zo nodig de deployconfiguratie aan.
+
+## 11. Fotoalbumweergave en browsercontrole (13 oktober 2026)
+
+De publieke galerij is op `https://z0kp3vui4houqtn37bol1wl9.84.86.158.39.sslip.io/fotoalbum.html` in een echte browser geopend. Vóór de wijziging verschenen zeven albums en 131 foto's; Ahrtal 2026 bevatte 55 foto's. Albumselectie, fullscreen openen, volgende foto en sluiten met Escape werkten. De gedeelde stijlen en navigatie waren zichtbaar op deze pagina.
+
+De galerij opent voortaan met albumcovers. Pas na keuze van een album of `Alle foto’s` worden de fotokaarten opgebouwd. Dit voorkomt dat op de openingsweergave meteen alle foto's als thumbnails worden geladen. De cover van het geselecteerde album krijgt `aria-pressed`. De datum uit `createdAt` wordt als **toevoegdatum** getoond; bij oude reisfoto's is dit niet automatisch de opnamedatum. Als albumtitels tijdelijk niet beschikbaar zijn, blijven albums uit de fotolijst zichtbaar. Foto- en albumgegevens blijven in de afzonderlijke fotoservice; de frontendwijziging raakt geen opslag of schrijfacties.
+
+De gewijzigde HTML is lokaal geparseerd; de element-ID's zijn uniek, CSS-blokken hebben sluitende accolades en de inline JavaScript slaagt voor `node --check`. Een beperkte DOM-simulatie doorliep de openingsweergave, albumkeuze, toegevoegddatum, fullscreen vorige/volgende/terug, `Alle foto’s` en de fallback als albumtitels niet laden. Dit vervangt geen browsertest van de gepubliceerde versie. Een productie- of hersteltest van uploads, albumwijzigingen, verwijderacties of Docker-opslag is niet uitgevoerd.
+
+### Deployblokkade
+
+Commit `05b5045` met de fotoalbumwijziging staat op `main`, maar [GitHub Actions-run #53](https://github.com/JorgoIJss/Ahrtal2026/actions/runs/38447107027) faalde bij het aanroepen van de lokale Coolify-API vanaf de self-hosted runner. Het antwoord was HTTP 403 met `You are not allowed to access the API.` De live pagina serveerde daardoor bij de laatste controle nog de vorige versie. Ook eerdere deploy-runs waren mislukt. Volgens de [Coolify-documentatie over API-fouten](https://coolify.io/docs/api/errors) past dit bij uitgeschakelde API-toegang of een IP-allowlist die de runner niet toelaat; controleer de concrete instelling in het lokale dashboard voordat je rechten of netwerktoegang wijzigt. De workflow gebruikt momenteel `GET /api/v1/deploy`, terwijl de actuele [endpointdocumentatie](https://coolify.io/docs/api/endpoints/deployments/deploy-by-tag-or-uuid) `POST` beschrijft. Controleer ook die methode tegen de geïnstalleerde Coolify-versie zodra de API-toegang werkt.
+
+Na een geslaagde publicatie: open de nieuwe albumweergave in een browser en controleer albumkeuze, `Alle foto’s`, fullscreen volgende/vorige/terug, consolefouten, de foto-API en het behoud van bestaande albums. Zonder die stap is de live release niet gevalideerd.
+
