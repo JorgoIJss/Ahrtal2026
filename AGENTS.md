@@ -53,3 +53,13 @@ Vraag expliciete goedkeuring voor: verwijderen van bestanden/foto's/albums, stor
 ## Niet aannemen
 
 De backendbroncode, Coolify-configuratie, opslagvolume, build- of CI-toolchain zijn niet door dit AGENTS.md geverifieerd. Inspecteer de betreffende infrastructuur voordat je wijzigingen voorstelt of uitvoert.
+
+## Shared asset convention (vanaf 13 oktober 2026)
+
+- Algemene CSS is gecentraliseerd in `assets/css/base.css`; navigatie-CSS in `assets/css/sidebar.css`.
+- Sidebargedrag staat in `assets/js/sidebar.js`; de reis-einddatums en automatische geschiedenis in `assets/js/trip-history.js`.
+- Voer gedeelde navigatie- en reislogica **alleen in deze JS-assets** door; voeg niet opnieuw dezelfde inline code aan iedere pagina toe.
+- Nieuwe reizen vereisen óók controle van bestaande HTML-menu-items, agenda- en detailpagina's. De HTML-menulinks zijn nog niet data-driven.
+- Bij wijzigingen in gedeelde assets: controleer **alle zeven** HTML-pagina's en test asset-URL's op de echte host (HTTP 200).
+- De statische host moet `/assets/css/*.css` en `/assets/js/*.js` publiceren. Voorkom deploys die uitsluitend HTML-bestanden kopiëren.
+- Claim pas een geslaagde live- of visuele test wanneer de site vanuit een echte browser is gevalideerd.
