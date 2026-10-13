@@ -105,3 +105,28 @@ Dit document scheidt geverifieerde frontenddetails van aannames over de producti
 Controleer in Coolify (zonder wachtwoorden of tokens te delen): servicebron en branch/commit, deploymenttype, container-mounts, domeinen en proxyconfiguratie, healthcheck, storagebackups, en de koppeling frontend→foto-API. Op de Dockerhost zijn read-only controles relevant, zoals `docker ps --format '{{.Names}} {{.Image}} {{.Status}}'`, `docker volume ls` en `docker inspect <container>` (let op: inspect-output kan secrets bevatten; redigeer deze voor delen). Toets daarna met een gecontroleerde restoretest of albumfoto's en metadata werkelijk te herstellen zijn.
 
 **Auditstatus: gedeeltelijk voltooid; niet voldoende om veilige backups of correcte live deployment vast te stellen.**
+
+## 10. Gedeelde frontend-assets en regressietests (13 oktober 2026)
+
+De zeven gecontroleerde HTML-pagina's gebruiken nu vier gedeelde assets:
+
+- `assets/css/base.css`: de acht voorheen identieke algemene style-blokken.
+- `assets/css/sidebar.css`: de twee voorheen identieke sidebar-style-blokken.
+- `assets/js/sidebar.js`: initialisatie van het bestaande zijmenu.
+- `assets/js/trip-history.js`: de gedeelde datumafhankelijke reis-/historielogica.
+
+De extractie is **gedragsbehoudend** ontworpen: de originele CSS-regels en JavaScript-inhoud zijn niet inhoudelijk herschreven, en verwijzingen vervangen de oorspronkelijke inline-blokken in hun bestaande volgorde. Paginaspecifieke scripts (weer, stemformulier, fotogalerij, upload, geschiedenis) zijn behouden. De grote HTML-bronbestanden zijn ongeveer 23 KB per pagina kleiner. De feitelijke reis-data staan op één locatie in `assets/js/trip-history.js`; statische HTML-links naar reizen blijven op de pagina's staan en hoeven bij een nieuwe reis nog apart aandacht.
+
+### Uitgevoerde controles
+
+- De zeven pagina's zijn opnieuw via GitHub gelezen en gecontroleerd op de vier assetverwijzingen.
+- De twee gedeelde scripts zijn als JavaScript syntactisch gecompileerd zonder fout.
+- De reis-einddatums zijn gecontroleerd: 2026-10-11, 2026-11-14, 2027-04-11.
+- De assetbestanden zijn na commits opnieuw via GitHub gelezen.
+- De script- en stylesheetextractie is vóór de commits gecontroleerd tegen identieke blokken op alle zeven pagina's.
+
+### Nog niet bewezen
+
+Een daadwerkelijke browser-/visuele regressietest en productie-smoketest zijn **niet voltooid**: de gepubliceerde site en foto-API zijn vanuit de beschikbare webomgeving niet toegankelijk. Daarmee is niet vastgesteld dat de statische host de nieuwe paden onder `/assets/` correct serveert, of dat de automatische Coolify-deployment al is bijgewerkt. Controleer in een echte browser de netwerkstatus van alle vier assets (HTTP 200), mobiele navigatie, geschiedenis en fotobeheer voordat deze release als volledig gevalideerd geldt.
+
+Bij een server die HTML wel deployt maar nieuwe `assets/`-bestanden niet publiceert, vallen styling en navigatie weg. Controleer daarom ook het publicatiemechanisme en pas zo nodig de deployconfiguratie aan.
