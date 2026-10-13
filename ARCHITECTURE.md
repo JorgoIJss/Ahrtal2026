@@ -89,3 +89,19 @@ De frontend bevat een vaste cross-origin URL naar de foto-API. Volgens de fronte
 - Inrichting van een eenvoudige HTML/JS-check en een smoke-test in CI.
 
 Dit document scheidt geverifieerde frontenddetails van aannames over de productie-infrastructuur.
+
+## 9. Aanvullende infrastructuurcontrole — 13 oktober 2026
+
+### Uitgevoerde verificatie
+
+- De frontend verwijst expliciet naar `https://bpcphotos.84.86.158.39.sslip.io` voor fotoalbums en foto's.
+- De zichtbare frontend gebruikt `GET /api/albums`, `GET /api/photos` en schrijfacties met `X-Upload-Password`.
+- De twee publieke GET-endpoints en de gepubliceerde website zijn vanaf de beschikbare inspectieomgeving geprobeerd, maar konden daar niet worden bereikt. Dit is **geen bewijs van een storing** op de productieserver: de omgeving kon de bestemming niet bereiken/resolven.
+- De gekoppelde GitHub-account toont de frontend-repository `JorgoIJss/Ahrtal2026`; een afzonderlijke BPC-fotoserverbronrepository is niet positief geïdentificeerd.
+- Er is in deze inspectie **geen geauthenticeerde toegang tot Coolify, Docker of de server**. Daarom zijn container-image, mounts, restarts, reverse proxy, live geheugengebruik, logboeken, back-ups en restoreprocedure niet gecontroleerd.
+
+### Benodigd bewijs voor een volledige productie-audit
+
+Controleer in Coolify (zonder wachtwoorden of tokens te delen): servicebron en branch/commit, deploymenttype, container-mounts, domeinen en proxyconfiguratie, healthcheck, storagebackups, en de koppeling frontend→foto-API. Op de Dockerhost zijn read-only controles relevant, zoals `docker ps --format '{{.Names}} {{.Image}} {{.Status}}'`, `docker volume ls` en `docker inspect <container>` (let op: inspect-output kan secrets bevatten; redigeer deze voor delen). Toets daarna met een gecontroleerde restoretest of albumfoto's en metadata werkelijk te herstellen zijn.
+
+**Auditstatus: gedeeltelijk voltooid; niet voldoende om veilige backups of correcte live deployment vast te stellen.**
