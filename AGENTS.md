@@ -15,6 +15,7 @@ Dit is **BPC on Tour**, een Nederlandstalige statische website met reisagenda, h
 7. **Veilige schrijfacties.** Respecteer de bestaande header `X-Upload-Password` voor write operations. Schrijf nooit wachtwoorden, tokens, cookies of andere secrets naar source, logs of documentatie. Vertrouw client-side controles niet als securitygrens.
 8. **Privacy.** Publiceer geen privéfoto's, persoonsgegevens of verborgen credentials zonder toestemming. Toon onbetrouwbare captions met `textContent`, niet `innerHTML`.
 9. **UX-behoud.** Foto's moeten in fullscreen geopend kunnen worden en vorige/volgende/terug ondersteunen. Houd albumcover, onderschrift, bulk-upload en bekijken/beheren als gescheiden stromen intact. Werking moet ook op mobiel duidelijk zijn.
+   In `fotoalbum.html` opent de publieke galerij met albumcovers; fotokaarten worden na albumkeuze of `Alle foto’s` opgebouwd. `createdAt` is de toevoegdatum, niet noodzakelijk de opnamedatum of reisdatum.
 10. **Geen verzonnen verificaties.** Rapporteer welke bestanden je echt inspecteerde, welke controles je echt uitvoerde en welke backend-/deployaspecten niet toegankelijk waren.
 
 ## Belangrijke pagina's
@@ -63,3 +64,4 @@ De backendbroncode, Coolify-configuratie, opslagvolume, build- of CI-toolchain z
 - Bij wijzigingen in gedeelde assets: controleer **alle zeven** HTML-pagina's en test asset-URL's op de echte host (HTTP 200).
 - De statische host moet `/assets/css/*.css` en `/assets/js/*.js` publiceren. Voorkom deploys die uitsluitend HTML-bestanden kopiëren.
 - Claim pas een geslaagde live- of visuele test wanneer de site vanuit een echte browser is gevalideerd.
+
